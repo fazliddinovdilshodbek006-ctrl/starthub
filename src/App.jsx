@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Users, TrendingUp, Zap, MessageCircle, Sparkles, Target, Rocket } from 'lucide-react';
+import { Plus, Search, Users, TrendingUp, Zap, MessageCircle, Sparkles, Target, Rocket, Github } from 'lucide-react';
+import { getProjects, createProject, signInWithGitHub, signOut, getCurrentUser } from './lib/database';
 import './App.css';
 
 const App = () => {
@@ -7,6 +8,8 @@ const App = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Hammasi');
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   
   const categories = [
     { name: 'Hammasi', icon: '🌟', color: 'from-yellow-400 to-orange-400' },
@@ -29,56 +32,155 @@ const App = () => {
   });
 
   useEffect(() => {
-    const savedProjects = localStorage.getItem('sherik_top_projects');
-    if (savedProjects) {
-      try {
-        setProjects(JSON.parse(savedProjects));
-      } catch (e) {
-        console.error('Error loading projects:', e);
-      }
-    }
+    loadInitialData();
   }, []);
 
-  const handleCreateProject = () => {
+  const loadInitialData = async () => {
+    try {
+      console.log('🚀 Dastur yuklanmoqda...');
+      
+      // 1. Foydalanuvchini tekshirish
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+      
+      // 2. Loyihalarni yuklash (avval Supabase'dan)
+      const { data: supabaseProjects, error } = await getProjects({ limit: 50 });
+      
+      if (!error && supabaseProjects && supabaseProjects.length > 0) {
+        console.log('✅ Supabase dan', supabaseProjects.length, 'ta loyiha yuklandi');
+        setProjects(supabaseProjects);
+      } else {
+        // Agar Supabase'dan olmasa, localStorage dan olamiz
+        console.log('ℹ️ Supabase dan ma\'lumot olinmadi, localStorage tekshirilmoqda');
+        const savedProjects = localStorage.getItem('sherik_top_projects');
+        if (savedProjects) {
+          try {
+            const parsedProjects = JSON.parse(savedProjects);
+            console.log('✅ LocalStorage dan', parsedProjects.length, 'ta loyiha yuklandi');
+            setProjects(parsedProjects);
+          } catch (e) {
+            console.error('❌ LocalStorage ma\'lumotlari xato:', e);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Dastur yuklashda xatolik:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateProject = async () => {
     if (!newProject.title || !newProject.description || !newProject.author || !newProject.telegram) {
       alert('Iltimos, barcha majburiy maydonlarni to\'ldiring!');
       return;
     }
 
-    const project = {
-      ...newProject,
-      id: Date.now().toString(),
-      votes: 0,
-      created_at: new Date().toISOString()
-    };
+    try {
+      const projectData = {
+        title: newProject.title,
+        description: newProject.description,
+        category: newProject.category,
+        looking_for: newProject.looking_for ? [newProject.looking_for] : [],
+        stage: newProject.stage,
+        telegram: newProject.telegram,
+        author: newProject.author,
+        votes: 0
+      };
 
-    const updatedProjects = [project, ...projects];
-    setProjects(updatedProjects);
-    localStorage.setItem('sherik_top_projects', JSON.stringify(updatedProjects));
-    
-    setShowCreateModal(false);
-    setNewProject({
-      title: '',
-      description: '',
-      category: 'Texnologiya',
-      looking_for: '',
-      stage: 'G\'oya',
-      telegram: '',
-      author: ''
-    });
-    alert('Loyihangiz muvaffaqiyatli yaratildi! 🎉');
+      console.log('📤 Supabase ga loyiha yuborilmoqda...');
+      
+      // 1. Avval Supabase ga saqlashga urinamiz
+      const { data: createdProject, error } = await createProject(projectData);
+      
+      let finalProject;
+      
+      if (error) {
+        console.log('⚠️ Supabase xatosi, localStorage ga saqlaymiz:', error.message);
+        
+        // 2. Agar Supabase ga saqlash xato bo'lsa, localStorage ga saqlaymiz
+        finalProject = {
+          ...projectData,
+          id: Date.now().toString(),
+          created_at: new Date().toISOString()
+        };
+        
+        // LocalStorage ga saqlaymiz
+        const updatedProjects = [finalProject, ...projects];
+        localStorage.setItem('sherik_top_projects', JSON.stringify(updatedProjects));
+        
+      } else {
+        // 3. Supabase ga muvaffaqiyatli saqlandi
+        console.log('✅ Supabase ga saqlandi:', createdProject);
+        finalProject = createdProject[0] || createdProject;
+        
+        // LocalStorage ni ham yangilaymiz (fallback uchun)
+        const updatedProjects = [finalProject, ...projects];
+        localStorage.setItem('sherik_top_projects', JSON.stringify(updatedProjects));
+      }
+
+      // 4. State ni yangilaymiz
+      const updatedProjects = [finalProject, ...projects];
+      setProjects(updatedProjects);
+      
+      // 5. Formani tozalaymiz
+      setShowCreateModal(false);
+      setNewProject({
+        title: '',
+        description: '',
+        category: 'Texnologiya',
+        looking_for: '',
+        stage: 'G\'oya',
+        telegram: '',
+        author: ''
+      });
+      
+      alert('🎉 Loyihangiz muvaffaqiyatli yaratildi!');
+      
+    } catch (error) {
+      console.error('❌ Loyiha yaratishda xatolik:', error);
+      alert('Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.');
+    }
   };
 
-  const handleVote = (projectId) => {
-    const updatedProjects = projects.map(p => {
-      if (p.id === projectId) {
-        return { ...p, votes: p.votes + 1 };
-      }
-      return p;
-    });
-    const sortedProjects = updatedProjects.sort((a, b) => b.votes - a.votes);
-    setProjects(sortedProjects);
-    localStorage.setItem('sherik_top_projects', JSON.stringify(sortedProjects));
+  const handleVote = async (projectId) => {
+    try {
+      // Hozircha faqat localStorage bilan ishlaymiz
+      const updatedProjects = projects.map(p => {
+        if (p.id === projectId) {
+          return { ...p, votes: p.votes + 1 };
+        }
+        return p;
+      });
+      
+      const sortedProjects = updatedProjects.sort((a, b) => b.votes - a.votes);
+      setProjects(sortedProjects);
+      localStorage.setItem('sherik_top_projects', JSON.stringify(sortedProjects));
+      
+    } catch (error) {
+      console.error('❌ Ovoz berishda xatolik:', error);
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const { error } = await signInWithGitHub();
+      if (error) throw error;
+    } catch (error) {
+      console.error('❌ Login xatosi:', error);
+      alert(`Kirish xatosi: ${error.message}`);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await signOut();
+      if (error) throw error;
+      setUser(null);
+      alert('👋 Siz tizimdan chiqdingiz');
+    } catch (error) {
+      console.error('❌ Logout xatosi:', error);
+    }
   };
 
   const filteredProjects = projects.filter(p => {
@@ -87,6 +189,23 @@ const App = () => {
     const matchesCategory = selectedCategory === 'Hammasi' || p.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+        <div className="text-center">
+          <div className="w-20 h-20 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
+            <Target className="text-white" size={36} />
+          </div>
+          <h1 className="text-3xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            Sherik Top
+          </h1>
+          <p className="text-gray-600">Platforma yuklanmoqda...</p>
+          <p className="text-sm text-gray-500 mt-4">Supabase bilan ulanish tekshirilmoqda</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -102,16 +221,50 @@ const App = () => {
                 <h1 className="text-3xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
                   Sherik Top
                 </h1>
-                <p className="text-xs text-gray-600 font-medium">Sheriklar Topish Platformasi</p>
+                <p className="text-xs text-gray-600 font-medium">
+                  {user ? `Salom, ${user.email?.split('@')[0] || 'Foydalanuvchi'}!` : 'Sheriklar Topish Platformasi'}
+                </p>
               </div>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
-            >
-              <Plus size={22} className="animate-pulse" />
-              Loyiha Yaratish
-            </button>
+            
+            <div className="flex items-center gap-4">
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <div className="hidden md:flex items-center gap-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                      {user.email?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <span className="text-sm font-semibold text-gray-800">
+                      {user.email?.split('@')[0] || 'Foydalanuvchi'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-bold hover:shadow-lg transition-all flex items-center gap-2"
+                  >
+                    <span className="hidden sm:inline">Chiqish</span>
+                    <TrendingUp size={18} className="rotate-90" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleLogin}
+                  className="px-4 py-2 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl font-bold hover:shadow-lg transition-all flex items-center gap-2"
+                >
+                  <Github size={18} />
+                  <span className="hidden sm:inline">Kirish</span>
+                </button>
+              )}
+              
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
+              >
+                <Plus size={22} className="animate-pulse" />
+                <span className="hidden sm:inline">Loyiha Yaratish</span>
+                <span className="sm:hidden">Yaratish</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -126,7 +279,9 @@ const App = () => {
         <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
           <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-6 animate-bounce">
             <Sparkles size={20} className="text-yellow-300" />
-            <span className="text-sm font-semibold">O'zbekistonning Eng Yirik Sheriklar Platformasi</span>
+            <span className="text-sm font-semibold">
+              {user ? 'Sherik topishni boshlang!' : 'O\'zbekistonning Eng Yirik Sheriklar Platformasi'}
+            </span>
           </div>
           
           <h2 className="text-5xl md:text-6xl font-black mb-6 leading-tight">
@@ -135,7 +290,10 @@ const App = () => {
           </h2>
           
           <p className="text-xl md:text-2xl mb-10 opacity-95 max-w-3xl mx-auto font-medium">
-            Yoshlar o'rtasida hamkorlik va tadbirkorlikni rivojlantirish uchun platforma
+            {user 
+              ? 'Endi sizning loyihalaringiz barchaga ko\'rinadi!'
+              : 'Yoshlar o\'rtasida hamkorlik va tadbirkorlikni rivojlantirish uchun platforma'
+            }
           </p>
           
           <div className="flex justify-center gap-12 mt-12">
@@ -144,12 +302,14 @@ const App = () => {
               <div className="text-sm opacity-90 font-medium">Faol Loyihalar</div>
             </div>
             <div className="text-center transform hover:scale-110 transition-all duration-300">
-              <div className="text-5xl font-black mb-2">{projects.reduce((sum, p) => sum + p.votes, 0)}</div>
+              <div className="text-5xl font-black mb-2">
+  {projects.reduce((sum, p) => sum + (Number(p.votes) || 0), 0)}
+</div>
               <div className="text-sm opacity-90 font-medium">Ovozlar</div>
             </div>
             <div className="text-center transform hover:scale-110 transition-all duration-300">
-              <div className="text-5xl font-black mb-2">500+</div>
-              <div className="text-sm opacity-90 font-medium">Sheriklar</div>
+              <div className="text-5xl font-black mb-2">{user ? 'Online' : '500+'}</div>
+              <div className="text-sm opacity-90 font-medium">{user ? 'Siz' : 'Sheriklar'}</div>
             </div>
           </div>
         </div>
@@ -194,7 +354,12 @@ const App = () => {
             <div className="col-span-full text-center py-20">
               <div className="text-8xl mb-6 animate-bounce">🚀</div>
               <h3 className="text-3xl font-black text-gray-800 mb-4">Hali loyihalar yo'q</h3>
-              <p className="text-gray-600 text-lg mb-8">Birinchi bo'lib o'z loyihangizni yarating va sherik toping!</p>
+              <p className="text-gray-600 text-lg mb-8">
+                {user 
+                  ? 'Birinchi bo\'lib o\'z loyihangizni yarating!'
+                  : 'Birinchi bo\'lib o\'z loyihangizni yarating va sherik toping!'
+                }
+              </p>
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all inline-flex items-center gap-2"
@@ -231,19 +396,21 @@ const App = () => {
                   {project.looking_for && (
                     <div className="flex items-center gap-2 mb-5 bg-blue-50 p-3 rounded-lg">
                       <Users size={18} className="text-blue-600" />
-                      <span className="text-sm text-blue-900 font-semibold">Izlayapti: {project.looking_for}</span>
+                      <span className="text-sm text-blue-900 font-semibold">
+                        Izlayapti: {Array.isArray(project.looking_for) ? project.looking_for.join(', ') : project.looking_for}
+                      </span>
                     </div>
                   )}
 
                   <div className="flex items-center justify-between pt-5 border-t-2 border-gray-100">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white font-black text-lg shadow-lg">
-                        {project.author[0].toUpperCase()}
+                        {project.author?.[0]?.toUpperCase() || 'A'}
                       </div>
-                      <span className="text-sm text-gray-800 font-bold">{project.author}</span>
+                      <span className="text-sm text-gray-800 font-bold">{project.author || 'Anonim'}</span>
                     </div>
                     <a
-                      href={`https://t.me/${project.telegram.replace('@', '')}`}
+                      href={`https://t.me/${project.telegram?.replace('@', '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all transform hover:scale-105 text-sm font-bold"
@@ -401,10 +568,13 @@ const App = () => {
             <h3 className="text-3xl font-black">Sherik Top</h3>
           </div>
           <p className="text-indigo-200 text-lg mb-2">
-            🚀 O'zbekistonning Eng Yirik Sheriklar Topish Platformasi
+            🚀 {user ? 'Supabase bilan kuchaytirilgan' : 'O\'zbekistonning Eng Yirik'} Sheriklar Topish Platformasi
           </p>
           <p className="text-indigo-300 text-sm">
-            G'oyangiz bor? Sherik kerakmi? Biz bilan boshlang!
+            {user 
+              ? 'Loyihalaringiz endi Supabase da saqlanadi!'
+              : 'G\'oyangiz bor? Sherik kerakmi? Biz bilan boshlang!'
+            }
           </p>
         </div>
       </footer>

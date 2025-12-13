@@ -9,18 +9,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.87.1",
     "cors": "^2.8.5",
     "express": "^5.2.1",
     "lucide-react": "^0.556.0",
     "pg": "^8.16.3",
     "react": "^19.2.1",
-    "react-dom": "^19.2.1",
-    "tailwindcss": "^3.4.1"
+    "react-dom": "^19.2.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.1",
     "vite": "^7.2.6"
   },
   "main": "eslint.config.js",
