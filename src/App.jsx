@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Users, TrendingUp, Zap, MessageCircle, Sparkles, Target, Rocket, Github } from 'lucide-react';
+import { Plus, Search, Users, TrendingUp, Zap, MessageCircle, Sparkles, Target, Rocket, Github, X } from 'lucide-react';
 import { getProjects, createProject, signInWithGitHub, signOut, getCurrentUser } from './lib/database';
 import './App.css';
 
 const App = () => {
   const [projects, setProjects] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Hammasi');
   const [user, setUser] = useState(null);
@@ -106,7 +108,8 @@ const App = () => {
         };
         
         // LocalStorage ga saqlaymiz
-        const updatedProjects = [finalProject, ...projects];
+        const existingProjects = JSON.parse(localStorage.getItem('sherik_top_projects') || '[]');
+        const updatedProjects = [finalProject, ...existingProjects];
         localStorage.setItem('sherik_top_projects', JSON.stringify(updatedProjects));
         
       } else {
@@ -115,13 +118,13 @@ const App = () => {
         finalProject = createdProject[0] || createdProject;
         
         // LocalStorage ni ham yangilaymiz (fallback uchun)
-        const updatedProjects = [finalProject, ...projects];
+        const existingProjects = JSON.parse(localStorage.getItem('sherik_top_projects') || '[]');
+        const updatedProjects = [finalProject, ...existingProjects];
         localStorage.setItem('sherik_top_projects', JSON.stringify(updatedProjects));
       }
 
       // 4. State ni yangilaymiz
-      const updatedProjects = [finalProject, ...projects];
-      setProjects(updatedProjects);
+      setProjects(prevProjects => [finalProject, ...prevProjects]);
       
       // 5. Formani tozalaymiz
       setShowCreateModal(false);
@@ -145,18 +148,20 @@ const App = () => {
 
   const handleVote = async (projectId) => {
     try {
-      // Hozircha faqat localStorage bilan ishlaymiz
       const updatedProjects = projects.map(p => {
         if (p.id === projectId) {
-          return { ...p, votes: p.votes + 1 };
+          return { ...p, votes: (p.votes || 0) + 1 };
         }
         return p;
       });
       
-      const sortedProjects = updatedProjects.sort((a, b) => b.votes - a.votes);
+      const sortedProjects = updatedProjects.sort((a, b) => (b.votes || 0) - (a.votes || 0));
       setProjects(sortedProjects);
       localStorage.setItem('sherik_top_projects', JSON.stringify(sortedProjects));
       
+      if (selectedProject && selectedProject.id === projectId) {
+        setSelectedProject({ ...selectedProject, votes: (selectedProject.votes || 0) + 1 });
+      }
     } catch (error) {
       console.error('❌ Ovoz berishda xatolik:', error);
     }
@@ -181,6 +186,11 @@ const App = () => {
     } catch (error) {
       console.error('❌ Logout xatosi:', error);
     }
+  };
+
+  const handleProjectClick = (project) => {
+    setSelectedProject(project);
+    setShowDetailModal(true);
   };
 
   const filteredProjects = projects.filter(p => {
@@ -303,8 +313,8 @@ const App = () => {
             </div>
             <div className="text-center transform hover:scale-110 transition-all duration-300">
               <div className="text-5xl font-black mb-2">
-  {projects.reduce((sum, p) => sum + (Number(p.votes) || 0), 0)}
-</div>
+                {projects.reduce((sum, p) => sum + (Number(p.votes) || 0), 0)}
+              </div>
               <div className="text-sm opacity-90 font-medium">Ovozlar</div>
             </div>
             <div className="text-center transform hover:scale-110 transition-all duration-300">
@@ -370,7 +380,11 @@ const App = () => {
             </div>
           ) : (
             filteredProjects.map((project) => (
-              <div key={project.id} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-2 border-transparent hover:border-indigo-200">
+              <div 
+                key={project.id} 
+                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-2 border-transparent hover:border-indigo-200 cursor-pointer"
+                onClick={() => handleProjectClick(project)}
+              >
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex gap-2">
@@ -382,18 +396,21 @@ const App = () => {
                       </span>
                     </div>
                     <button
-                      onClick={() => handleVote(project.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleVote(project.id);
+                      }}
                       className="flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-2 rounded-xl hover:shadow-lg transition-all transform hover:scale-110 font-bold"
                     >
                       <TrendingUp size={18} />
-                      {project.votes}
+                      {project.votes || 0}
                     </button>
                   </div>
 
                   <h3 className="text-2xl font-black text-gray-900 mb-3">{project.title}</h3>
                   <p className="text-gray-600 text-sm mb-5 line-clamp-3 leading-relaxed">{project.description}</p>
 
-                  {project.looking_for && (
+                  {project.looking_for && project.looking_for.length > 0 && (
                     <div className="flex items-center gap-2 mb-5 bg-blue-50 p-3 rounded-lg">
                       <Users size={18} className="text-blue-600" />
                       <span className="text-sm text-blue-900 font-semibold">
@@ -414,6 +431,7 @@ const App = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all transform hover:scale-105 text-sm font-bold"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <MessageCircle size={16} />
                       Bog'lanish
@@ -553,6 +571,128 @@ const App = () => {
                   className="flex-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-6 py-4 rounded-xl font-bold hover:shadow-2xl transition-all transform hover:scale-105 text-lg"
                 >
                   Yaratish
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL MODAL */}
+      {showDetailModal && selectedProject && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="p-8">
+              <div className="flex justify-between items-start mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                    <Sparkles className="text-white" size={24} />
+                  </div>
+                  <h2 className="text-3xl font-black text-gray-900">{selectedProject.title}</h2>
+                </div>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="text-gray-400 hover:text-gray-700 text-2xl p-2"
+                >
+                  <X size={28} />
+                </button>
+              </div>
+
+              {/* Categories & Stage */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                <span className="text-sm bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full font-bold">
+                  {selectedProject.category}
+                </span>
+                <span className="text-sm bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full font-bold">
+                  {selectedProject.stage}
+                </span>
+                <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-bold">
+                  Ovozlar: {selectedProject.votes || 0}
+                </span>
+                {selectedProject.created_at && (
+                  <span className="text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full font-bold">
+                    {new Date(selectedProject.created_at).toLocaleDateString('uz-UZ')}
+                  </span>
+                )}
+              </div>
+
+              {/* Full Description */}
+              <div className="mb-8">
+                <h3 className="text-lg font-bold text-gray-700 mb-3">Loyiha haqida batafsil:</h3>
+                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                  <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                    {selectedProject.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Looking For */}
+              {selectedProject.looking_for && selectedProject.looking_for.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-700 mb-3">Izlayapti:</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.isArray(selectedProject.looking_for) 
+                      ? selectedProject.looking_for.map((skill, index) => (
+                          <span key={index} className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium">
+                            {skill}
+                          </span>
+                        ))
+                      : <span className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium">
+                          {selectedProject.looking_for}
+                        </span>
+                    }
+                  </div>
+                </div>
+              )}
+
+              {/* Author Info */}
+              <div className="border-t border-gray-200 pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white font-black text-lg shadow-lg">
+                      {selectedProject.author?.[0]?.toUpperCase() || 'A'}
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-900">{selectedProject.author || 'Anonim'}</div>
+                      {selectedProject.telegram && (
+                        <div className="text-sm text-gray-600">
+                          Telegram: @{selectedProject.telegram.replace('@', '')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Contact Button */}
+                  {selectedProject.telegram && (
+                    <a
+                      href={`https://t.me/${selectedProject.telegram.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all transform hover:scale-105 font-bold flex items-center gap-2"
+                    >
+                      <MessageCircle size={20} />
+                      Telegram orqali bog'lanish
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    handleVote(selectedProject.id);
+                  }}
+                  className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-6 py-4 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+                >
+                  <TrendingUp size={20} />
+                  Ovoz berish ({selectedProject.votes || 0})
+                </button>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="flex-1 px-6 py-4 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-50 transition-all"
+                >
+                  Yopish
                 </button>
               </div>
             </div>
