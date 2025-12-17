@@ -1,13 +1,73 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase sozlamalaringizni shu yerga yozing
-const supabaseUrl = 'https://vqbjifdxqwqfxsdwvjgk.supabase.co'; // O'z project url ingizni qo'ying
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // O'z anon key ingizni qo'ying
+// Supabase sozlamalari
+const supabaseUrl = 'https://vqbjifdxqwqfxsdwvjgk.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Mock mode - agar Supabase ishlamasa
+const USE_MOCK = true;
 
-// Loyihalarni olish
+// ========== MOCK FUNKSIYALARI ==========
+const mockProjects = [
+  {
+    id: '1',
+    title: 'Startup Platformasi',
+    description: 'Yoshlar uchun startup platformasi',
+    category: 'Texnologiya',
+    looking_for: ['Dasturchi', 'Dizayner'],
+    stage: 'G\'oya',
+    telegram: '@namdizayn',
+    author: 'NamDTU',
+    authorId: 'founder_nam',
+    votes: 15,
+    votedBy: [],
+    comments: [],
+    created_at: new Date().toISOString()
+  },
+  {
+    id: '2',
+    title: 'Online Ta\'lim Platformasi',
+    description: 'O\'zbek tilida online kurslar',
+    category: 'Ta\'lim',
+    looking_for: ['Dasturchi', 'UI/UX Designer', 'Marketing'],
+    stage: 'MVP',
+    telegram: '@developer',
+    author: 'Ali Valiyev',
+    authorId: '2',
+    votes: 8,
+    votedBy: [],
+    comments: [],
+    created_at: new Date().toISOString()
+  }
+];
+
+// ========== SUPABASE CLIENT ==========
+let supabase;
+if (!USE_MOCK) {
+  try {
+    supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log('✅ Supabase ga ulandi');
+  } catch (error) {
+    console.error('❌ Supabase client yaratishda xatolik:', error);
+  }
+}
+
+// ========== LOYIHALARNI OLISH ==========
 export const getProjects = async ({ limit = 50 } = {}) => {
+  if (USE_MOCK) {
+    console.log('📂 Mock loyihalar qaytarilmoqda');
+    
+    const savedProjects = localStorage.getItem('sherik_top_projects');
+    if (savedProjects) {
+      const parsed = JSON.parse(savedProjects);
+      return { data: parsed.slice(0, limit), error: null };
+    }
+    
+    localStorage.setItem('sherik_top_projects', JSON.stringify(mockProjects));
+    return { data: mockProjects.slice(0, limit), error: null };
+  }
+  
+  // Supabase versiyasi
   try {
     const { data, error } = await supabase
       .from('projects')
@@ -17,7 +77,7 @@ export const getProjects = async ({ limit = 50 } = {}) => {
     
     if (error) {
       console.error('❌ Supabase xatosi:', error);
-      // Agar table bo'lmasa, localStorage dan olish
+      // Fallback to localStorage
       const savedProjects = localStorage.getItem('sherik_top_projects');
       if (savedProjects) {
         return { data: JSON.parse(savedProjects), error: null };
@@ -32,41 +92,61 @@ export const getProjects = async ({ limit = 50 } = {}) => {
   }
 };
 
-// Loyiha yaratish
+// ========== LOYIHA YARATISH ==========
 export const createProject = async (projectData) => {
-  try {
-    // Avval Supabase ga yozishga urinib ko'ramiz
-    const { data, error } = await supabase
-      .from('projects')
-      .insert([projectData])
-      .select();
+  if (USE_MOCK) {
+    console.log('📝 Mock loyiha yaratildi:', projectData);
     
-    if (!error && data) {
-      console.log('✅ Supabase ga loyiha saqlandi');
-      return { data, error };
-    }
-    
-    // Agar Supabase da xatolik bo'lsa, localStorage ga saqlaymiz
-    console.warn('⚠️ Supabase ga saqlash muvaffaqiyatsiz, localStorage ga saqlanmoqda');
     const savedProjects = JSON.parse(localStorage.getItem('sherik_top_projects') || '[]');
     const newProject = {
       ...projectData,
       id: Date.now().toString(),
       created_at: new Date().toISOString()
     };
-    savedProjects.unshift(newProject);
-    localStorage.setItem('sherik_top_projects', JSON.stringify(savedProjects));
+    
+    const updatedProjects = [newProject, ...savedProjects];
+    localStorage.setItem('sherik_top_projects', JSON.stringify(updatedProjects));
     
     return { data: [newProject], error: null };
+  }
+  
+  // Supabase versiyasi
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .insert([projectData])
+      .select();
     
+    if (error) {
+      console.warn('⚠️ Supabase ga saqlash muvaffaqiyatsiz, localStorage ga saqlanmoqda');
+      // Fallback to localStorage
+      const savedProjects = JSON.parse(localStorage.getItem('sherik_top_projects') || '[]');
+      const newProject = {
+        ...projectData,
+        id: Date.now().toString(),
+        created_at: new Date().toISOString()
+      };
+      savedProjects.unshift(newProject);
+      localStorage.setItem('sherik_top_projects', JSON.stringify(savedProjects));
+      
+      return { data: [newProject], error: null };
+    }
+    
+    return { data, error };
   } catch (error) {
     console.error('❌ Loyiha yaratishda xatolik:', error);
     return { data: null, error };
   }
 };
 
-// Foydalanuvchini olish
+// ========== FOYDALANUVCHINI OLISH ==========
 export const getCurrentUser = async () => {
+  if (USE_MOCK) {
+    console.log('👤 Mock foydalanuvchi');
+    return { id: 'demo_user', email: 'demo@sherik.top' };
+  }
+  
+  // Supabase versiyasi
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) {
@@ -80,27 +160,18 @@ export const getCurrentUser = async () => {
   }
 };
 
-// GitHub orqali login
+// ========== GITHUB LOGIN ==========
 export const signInWithGitHub = async () => {
+  if (USE_MOCK) {
+    console.log('🔑 Mock GitHub login');
+    return { error: null };
+  }
+  
+  // Supabase versiyasi
   try {
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: window.location.origin
-      }
+      provider: 'github'
     });
-    
-    if (error) {
-      console.error('❌ GitHub login xatosi:', error);
-      // Mock login - demo uchun
-      const mockUser = {
-        id: 'demo_' + Date.now(),
-        email: 'demo@github.com',
-        user_metadata: { full_name: 'Demo User' }
-      };
-      localStorage.setItem('demo_user', JSON.stringify(mockUser));
-    }
-    
     return { error };
   } catch (error) {
     console.error('❌ GitHub login xatosi:', error);
@@ -108,22 +179,22 @@ export const signInWithGitHub = async () => {
   }
 };
 
-// Logout
+// ========== LOGOUT ==========
 export const signOut = async () => {
+  if (USE_MOCK) {
+    console.log('🚪 Mock logout');
+    return { error: null };
+  }
+  
+  // Supabase versiyasi
   try {
-    // LocalStorage ni tozalash
-    localStorage.removeItem('demo_user');
-    
-    // Supabase dan chiqish
     const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      console.error('❌ Logout xatosi:', error);
-    }
-    
     return { error };
   } catch (error) {
     console.error('❌ Logout xatosi:', error);
     return { error };
   }
 };
+
+// ========== SUPABASE EXPORT ==========
+export { supabase };
