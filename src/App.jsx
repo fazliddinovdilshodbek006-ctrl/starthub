@@ -78,39 +78,45 @@ const App = () => {
     loadInitialData();
   }, []);
 
+  // ========== PROFILNI LOCALSTORAGE DAN OLISH ==========
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('sherik_current_profile');
+    if (savedProfile) {
+      setCurrentProfile(JSON.parse(savedProfile));
+    }
+    
+    const savedProfiles = localStorage.getItem('sherik_top_profiles');
+    if (savedProfiles) {
+      setProfiles(JSON.parse(savedProfiles));
+    }
+  }, []);
+
+  // ========== PROFIL O'ZGARGANDA LOCALSTORAGE GA SAQLASH ==========
+  useEffect(() => {
+    if (currentProfile) {
+      localStorage.setItem('sherik_current_profile', JSON.stringify(currentProfile));
+    }
+  }, [currentProfile]);
+
   const loadInitialData = async () => {
     try {
       console.log('🚀 Dastur yuklanmoqda...');
       
-      // Foydalanuvchini tekshirish
       const currentUser = await getCurrentUser();
       setUser(currentUser);
-      
-      // Profillarni yuklash
-      const savedProfiles = localStorage.getItem('sherik_top_profiles');
-      if (savedProfiles) {
-        const parsedProfiles = JSON.parse(savedProfiles);
-        setProfiles(parsedProfiles);
-        
-        // Joriy foydalanuvchi profilini topish
-        if (currentUser) {
-          const userProfile = parsedProfiles.find(p => p.odamId === currentUser.id);
-          setCurrentProfile(userProfile || null);
-        }
-      }
       
       // Loyihalarni yuklash
       const { data: supabaseProjects, error } = await getProjects({ limit: 50 });
       
       if (!error && supabaseProjects && supabaseProjects.length > 0) {
         console.log('✅ Supabase dan', supabaseProjects.length, 'ta loyiha yuklandi');
-        // Har bir loyihaga votedBy va comments qo'shamiz agar yo'q bo'lsa
         const enrichedProjects = supabaseProjects.map(p => ({
           ...p,
           votedBy: p.votedBy || [],
           comments: p.comments || []
         }));
         setProjects(enrichedProjects);
+        localStorage.setItem('sherik_top_projects', JSON.stringify(enrichedProjects));
       } else {
         const savedProjects = localStorage.getItem('sherik_top_projects');
         if (savedProjects) {
@@ -143,15 +149,21 @@ const App = () => {
 
     const profile = {
       id: Date.now().toString(),
-      odamId: user?.id || Date.now().toString(),
+      odamId: user?.id || 'local_' + Date.now(),
       ...newProfile,
       createdAt: new Date().toISOString()
     };
 
-    const updatedProfiles = [profile, ...profiles];
+    // Eski profillarni o'chirib, yangisini qo'shamiz
+    const updatedProfiles = profiles.filter(p => p.odamId !== profile.odamId);
+    updatedProfiles.unshift(profile);
+    
     setProfiles(updatedProfiles);
     setCurrentProfile(profile);
+    
+    // LocalStorage ga saqlash
     localStorage.setItem('sherik_top_profiles', JSON.stringify(updatedProfiles));
+    localStorage.setItem('sherik_current_profile', JSON.stringify(profile));
     
     setShowProfileModal(false);
     setNewProfile({
@@ -239,7 +251,7 @@ const App = () => {
     }
   };
 
-  // ========== OVOZ BERISH (BIR KISHI = BIR OVOZ) ==========
+  // ========== OVOZ BERISH ==========
   const handleVote = async (projectId) => {
     if (!currentProfile) {
       alert('Ovoz berish uchun avval profil yarating!');
@@ -253,14 +265,12 @@ const App = () => {
         const hasVoted = votedBy.includes(currentProfile.id);
         
         if (hasVoted) {
-          // Ovozni olib tashlash
           return {
             ...p,
             votes: Math.max(0, (p.votes || 0) - 1),
             votedBy: votedBy.filter(id => id !== currentProfile.id)
           };
         } else {
-          // Ovoz berish
           return {
             ...p,
             votes: (p.votes || 0) + 1,
@@ -274,7 +284,6 @@ const App = () => {
     setProjects(updatedProjects);
     localStorage.setItem('sherik_top_projects', JSON.stringify(updatedProjects));
     
-    // Detail modal ni yangilash
     if (selectedProject && selectedProject.id === projectId) {
       const updatedProject = updatedProjects.find(p => p.id === projectId);
       setSelectedProject(updatedProject);
@@ -312,7 +321,6 @@ const App = () => {
     setProjects(updatedProjects);
     localStorage.setItem('sherik_top_projects', JSON.stringify(updatedProjects));
     
-    // Detail modal ni yangilash
     if (selectedProject && selectedProject.id === projectId) {
       const updatedProject = updatedProjects.find(p => p.id === projectId);
       setSelectedProject(updatedProject);
@@ -373,6 +381,7 @@ const App = () => {
       if (error) throw error;
       setUser(null);
       setCurrentProfile(null);
+      localStorage.removeItem('sherik_current_profile');
       alert('👋 Siz tizimdan chiqdingiz');
     } catch (error) {
       console.error('❌ Logout xatosi:', error);
@@ -508,7 +517,7 @@ const App = () => {
         </div>
       </section>
 
-      {/* Recommended Projects for current user */}
+      {/* Recommended Projects */}
       {currentProfile && recommendedProjects.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100">
@@ -856,6 +865,7 @@ const App = () => {
                       const updatedProfiles = profiles.filter(p => p.id !== currentProfile.id);
                       setProfiles(updatedProfiles);
                       localStorage.setItem('sherik_top_profiles', JSON.stringify(updatedProfiles));
+                      localStorage.removeItem('sherik_current_profile');
                       setShowProfileModal(false);
                     }}
                     className="w-full py-3 text-red-500 hover:bg-red-50 rounded-xl font-semibold transition-colors"
