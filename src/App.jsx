@@ -40,7 +40,7 @@ const App = () => {
   const [selectedCategory, setSelectedCategory] = useState('Hammasi');
   const [user, setUser] = useState(null);
   const [currentProfile, setCurrentProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // false qilindi
   const [commentText, setCommentText] = useState('');
   
   const categories = [
@@ -102,37 +102,53 @@ const App = () => {
     try {
       console.log('🚀 Dastur yuklanmoqda...');
       
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
+      // TEZ: Avval localStorage dan ma'lumotlarni olish
+      const savedProfile = localStorage.getItem('sherik_current_profile');
+      if (savedProfile) {
+        setCurrentProfile(JSON.parse(savedProfile));
+      }
       
-      // Loyihalarni yuklash
-      const { data: supabaseProjects, error } = await getProjects({ limit: 50 });
+      const savedProfiles = localStorage.getItem('sherik_top_profiles');
+      if (savedProfiles) {
+        setProfiles(JSON.parse(savedProfiles));
+      }
       
-      if (!error && supabaseProjects && supabaseProjects.length > 0) {
-        console.log('✅ Supabase dan', supabaseProjects.length, 'ta loyiha yuklandi');
-        const enrichedProjects = supabaseProjects.map(p => ({
+      const savedProjects = localStorage.getItem('sherik_top_projects');
+      if (savedProjects) {
+        const parsedProjects = JSON.parse(savedProjects);
+        const enrichedProjects = parsedProjects.map(p => ({
           ...p,
           votedBy: p.votedBy || [],
           comments: p.comments || []
         }));
         setProjects(enrichedProjects);
-        localStorage.setItem('sherik_top_projects', JSON.stringify(enrichedProjects));
-      } else {
-        const savedProjects = localStorage.getItem('sherik_top_projects');
-        if (savedProjects) {
-          const parsedProjects = JSON.parse(savedProjects);
-          const enrichedProjects = parsedProjects.map(p => ({
-            ...p,
-            votedBy: p.votedBy || [],
-            comments: p.comments || []
-          }));
-          setProjects(enrichedProjects);
-        }
       }
+      
+      // Keyin Supabase dan yuklash (background da)
+      setTimeout(async () => {
+        try {
+          const currentUser = await getCurrentUser();
+          setUser(currentUser);
+          
+          const { data: supabaseProjects, error } = await getProjects({ limit: 50 });
+          
+          if (!error && supabaseProjects && supabaseProjects.length > 0) {
+            console.log('✅ Supabase dan', supabaseProjects.length, 'ta loyiha yuklandi');
+            const enrichedProjects = supabaseProjects.map(p => ({
+              ...p,
+              votedBy: p.votedBy || [],
+              comments: p.comments || []
+            }));
+            setProjects(enrichedProjects);
+            localStorage.setItem('sherik_top_projects', JSON.stringify(enrichedProjects));
+          }
+        } catch (error) {
+          console.error('❌ Supabase yuklashda xatolik:', error);
+        }
+      }, 100);
+      
     } catch (error) {
       console.error('❌ Dastur yuklashda xatolik:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -401,20 +417,6 @@ const App = () => {
   });
 
   const recommendedProjects = getRecommendedProjects();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-white/20 flex items-center justify-center animate-pulse">
-            <Rocket className="w-10 h-10" />
-          </div>
-          <h2 className="text-2xl font-bold mb-2">Sherik Top</h2>
-          <p>Platforma yuklanmoqda...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
