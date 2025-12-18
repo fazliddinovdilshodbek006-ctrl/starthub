@@ -1,28 +1,43 @@
-// ./lib/database.js ichidagi getProjects funksiyasi
+// ODDIY VERSIYA - database.js
+import { createClient } from '@supabase/supabase-js';
 
-// AVVAL: (xato versiya)
-export const getProjects = async ({ limit = 50 }) => {
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+export const signInWithGitHub = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'github',
+    options: { redirectTo: window.location.origin }
+  });
+  return { data, error };
+};
+
+export const signOut = async () => {
+  const { error } = await supabase.auth.signOut();
+  return { error };
+};
+
+export const getCurrentUser = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+};
+
+export const getProjects = async () => {
   const { data, error } = await supabase
     .from('projects')
-    .select('*, profiles!owner_id(username, full_name)')  // XATO: profiles jadvali yo'q
-    .order('created_at.desc')  // XATO: noto'g'ri sintaksis
-    .limit(limit);
+    .select('*')
+    .order('created_at', { ascending: false });
   
   return { data, error };
 };
 
-// KEYIN: (to'g'ri versiya)
-export const getProjects = async ({ limit = 50 }) => {
-  try {
-    const { data, error } = await supabase
-      .from('public_projects')  // ✅ TO'G'RI: jadval nomi
-      .select('*')              // ✅ TO'G'RI: faqat asosiy ustunlar
-      .order('created_at', { ascending: false })  // ✅ TO'G'RI: obyekt bilan
-      .limit(limit);
-    
-    return { data, error };
-  } catch (err) {
-    console.error('getProjects xatosi:', err);
-    return { data: null, error: err };
-  }
+export const createProject = async (projectData) => {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert([projectData])
+    .select();
+  
+  return { data, error };
 };

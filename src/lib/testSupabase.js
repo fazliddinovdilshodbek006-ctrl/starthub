@@ -1,20 +1,25 @@
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from './database';
 
-// Environment o'zgaruvchilarini tekshirish
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-// ===== DEBUG QO'SHISH (mavjud kodni buzmasdan) =====
-console.log('🛠️ Supabase.js fayli ishga tushdi')
-console.log('URL:', supabaseUrl ? '✅ Mavjud' : '❌ Yo\'q')
-console.log('KEY:', supabaseAnonKey ? `✅ ${supabaseAnonKey.length} belgi` : '❌ Yo\'q')
-// ===================================================
-
-// Client yaratish
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('⚠️ Diqqat: Supabase URL yoki KEY topilmadi!')
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-export { supabase }
+export const testConnection = async () => {
+  console.log('🔍 Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+  console.log('🔑 Supabase Key mavjud:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
+  
+  try {
+    // Oddiy test query
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('count')
+      .limit(1);
+    
+    if (error) {
+      console.error('❌ Supabase xatosi:', error);
+      return false;
+    }
+    
+    console.log('✅ Supabase ulanish muvaffaqiyatli!');
+    return true;
+  } catch (err) {
+    console.error('❌ Kutilmagan xatolik:', err);
+    return false;
+  }
+};
