@@ -1,43 +1,6 @@
-// ODDIY VERSIYA - database.js
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = 'https://rtroshkaccjoxeqolcyf.supabase.co';
+const supabaseAnonKey = 'sb_publishable_ERjss7e36V5TGsTGI_K7NA_IJWDAawu'; // Publishable kalit
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-export const signInWithGitHub = async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'github',
-    options: { redirectTo: window.location.origin }
-  });
-  return { data, error };
-};
-
-export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  return { error };
-};
-
-export const getCurrentUser = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
-};
-
-export const getProjects = async () => {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .order('created_at', { ascending: false });
-  
-  return { data, error };
-};
-
-export const createProject = async (projectData) => {
-  const { data, error } = await supabase
-    .from('projects')
-    .insert([projectData])
-    .select();
-  
-  return { data, error };
-};

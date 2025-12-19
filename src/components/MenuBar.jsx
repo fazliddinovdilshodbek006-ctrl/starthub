@@ -10,8 +10,8 @@ const MenuBar = () => {
             <div className="logo-container">
                 <div className="logo-shape"></div>
                 <Link to="/" className="logo-text no-underline">
-                    Sherlik<span>Top</span>
-                </Link>
+    Sherik<span>Top</span>
+</Link>
             </div>
             
             <div className={`menu ${isMenuOpen ? 'active' : ''}`}>
