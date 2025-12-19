@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Users, TrendingUp, MessageCircle, Sparkles, Target, Rocket, Github, X } from "lucide-react";
-import { getProjects, createProject, signInWithGitHub, signOut, getCurrentUser } from "./database"; // ⚠️ O'ZGARTIRISH: "../lib/database" -> "./database"
+import { getProjects, createProject, signInWithGitHub, signOut, getCurrentUser } from "./database";
 import "./App.css";
 
 const Home = () => {
@@ -35,6 +35,17 @@ const Home = () => {
 
   useEffect(() => {
     loadInitialData();
+    
+    // Modalni ochish uchun event listener
+    const handleOpenCreateModal = () => {
+      setShowCreateModal(true);
+    };
+    
+    window.addEventListener('openCreateModal', handleOpenCreateModal);
+    
+    return () => {
+      window.removeEventListener('openCreateModal', handleOpenCreateModal);
+    };
   }, []);
 
   const loadInitialData = async () => {
@@ -45,17 +56,15 @@ const Home = () => {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
       
-      // 2. Loyihalarni yuklash (parametrsiz chaqirish) ⚠️ O'ZGARTIRISH
-      const supabaseProjects = await getProjects(); // { limit: 50 } PARAMETRINI O'CHIRING
+      // 2. Loyihalarni yuklash (parametrsiz chaqirish)
+      const supabaseProjects = await getProjects();
       
       if (supabaseProjects && supabaseProjects.length > 0) {
         console.log('✅ Supabase dan', supabaseProjects.length, 'ta loyiha yuklandi');
         setProjects(supabaseProjects);
         
-        // LocalStorage ga ham saqlaymiz (fallback uchun)
         localStorage.setItem('sherik_top_projects', JSON.stringify(supabaseProjects));
       } else {
-        // Agar Supabase'dan olmasa, localStorage dan olamiz
         console.log('ℹ️ Supabase dan ma\'lumot olinmadi, localStorage tekshirilmoqda');
         const savedProjects = localStorage.getItem('sherik_top_projects');
         if (savedProjects) {
@@ -88,14 +97,13 @@ const Home = () => {
         category: newProject.category,
         looking_for: newProject.looking_for ? [newProject.looking_for] : [],
         stage: newProject.stage,
-        telegram: newProject.telegram.replace('@', ''), // @ belgisini olib tashlaymiz
+        telegram: newProject.telegram.replace('@', ''),
         author: newProject.author,
         votes: 0
       };
 
       console.log('📤 Supabase ga loyiha yuborilmoqda...');
       
-      // createProject funksiyasini chaqiramiz
       const result = await createProject(projectData);
       
       if (!result) {
@@ -104,16 +112,12 @@ const Home = () => {
         return;
       }
       
-      // result allaqachon bitta obyekt (array emas) ⚠️ O'ZGARTIRISH
       console.log('✅ Yangi loyiha:', result);
       
-      // State ni yangilash
       setProjects(prev => [result, ...prev]);
       
-      // Foydalanuvchiga xabar
       alert('🎉 Loyihangiz muvaffaqiyatli yaratildi!');
       
-      // Formani tozalash
       setShowCreateModal(false);
       setNewProject({
         title: '',
@@ -205,7 +209,7 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 pt-16">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white py-20">
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white py-20 hero-section">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
@@ -221,7 +225,7 @@ const Home = () => {
           
           <h2 className="text-5xl md:text-6xl font-black mb-6 leading-tight">
             G'oyangiz Bor?<br />
-            <span className="text-yellow-300">Sherik Topamiz!</span>
+            <span className="text-yellow-300 main-title">Sherik Topamiz!</span>
           </h2>
           
           <p className="text-xl md:text-2xl mb-10 opacity-95 max-w-3xl mx-auto font-medium">
@@ -231,7 +235,7 @@ const Home = () => {
             }
           </p>
           
-          <div className="flex justify-center gap-12 mt-12">
+          <div className="flex justify-center gap-12 mt-12 stats-container">
             <div className="text-center transform hover:scale-110 transition-all duration-300">
               <div className="text-5xl font-black mb-2">{projects.length}</div>
               <div className="text-sm opacity-90 font-medium">Faol Loyihalar</div>
@@ -249,7 +253,7 @@ const Home = () => {
           </div>
 
           {/* User Info va Loyiha Yaratish Tugmasi */}
-          <div className="flex items-center justify-center gap-4 mt-12">
+          <div className="flex items-center justify-center gap-4 mt-12 hero-buttons">
             {user ? (
               <div className="flex items-center gap-3">
                 <div className="hidden md:flex items-center gap-2">
@@ -280,7 +284,7 @@ const Home = () => {
             
             <button
               onClick={() => setShowCreateModal(true)}
-              className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
+              className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2 btn-create"
             >
               <Plus size={22} className="animate-pulse" />
               <span className="hidden sm:inline">Loyiha Yaratish</span>
@@ -306,7 +310,7 @@ const Home = () => {
             </div>
           </div>
 
-          <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="flex gap-3 overflow-x-auto pb-2 categories-scroll">
             {categories.map((cat) => (
               <button
                 key={cat.name}
@@ -337,7 +341,7 @@ const Home = () => {
               </p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all inline-flex items-center gap-2"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all inline-flex items-center gap-2 btn-create"
               >
                 <Rocket size={24} />
                 Loyiha Yaratish
@@ -347,7 +351,7 @@ const Home = () => {
             filteredProjects.map((project) => (
               <div 
                 key={project.id} 
-                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-2 border-transparent hover:border-indigo-200 cursor-pointer"
+                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-2 border-transparent hover:border-indigo-200 cursor-pointer project-card"
                 onClick={() => handleProjectClick(project)}
               >
                 <div className="p-6">
@@ -365,7 +369,7 @@ const Home = () => {
                         e.stopPropagation();
                         handleVote(project.id);
                       }}
-                      className="flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-2 rounded-xl hover:shadow-lg transition-all transform hover:scale-110 font-bold"
+                      className="flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-2 rounded-xl hover:shadow-lg transition-all transform hover:scale-110 font-bold vote-btn"
                     >
                       <TrendingUp size={18} />
                       {project.votes || 0}
@@ -395,7 +399,7 @@ const Home = () => {
                       href={`https://t.me/${project.telegram?.replace('@', '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all transform hover:scale-105 text-sm font-bold"
+                      className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all transform hover:scale-105 text-sm font-bold contact-btn"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <MessageCircle size={16} />
@@ -412,7 +416,7 @@ const Home = () => {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl create-modal">
             <div className="p-8">
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
@@ -431,7 +435,7 @@ const Home = () => {
                     placeholder="Masalan: Alisher"
                     value={newProject.author}
                     onChange={(e) => setNewProject({...newProject, author: e.target.value})}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium modal-input"
                   />
                 </div>
 
@@ -444,7 +448,7 @@ const Home = () => {
                     placeholder="Masalan: O'quv platformasi yoshlar uchun"
                     value={newProject.title}
                     onChange={(e) => setNewProject({...newProject, title: e.target.value})}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium modal-input"
                   />
                 </div>
 
@@ -457,7 +461,7 @@ const Home = () => {
                     value={newProject.description}
                     onChange={(e) => setNewProject({...newProject, description: e.target.value})}
                     rows={4}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium modal-input"
                   />
                 </div>
 
@@ -469,7 +473,7 @@ const Home = () => {
                     <select
                       value={newProject.category}
                       onChange={(e) => setNewProject({...newProject, category: e.target.value})}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium modal-select"
                     >
                       <option>Texnologiya</option>
                       <option>Ta'lim</option>
@@ -487,7 +491,7 @@ const Home = () => {
                     <select
                       value={newProject.stage}
                       onChange={(e) => setNewProject({...newProject, stage: e.target.value})}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium modal-select"
                     >
                       <option>G'oya</option>
                       <option>MVP</option>
@@ -506,7 +510,7 @@ const Home = () => {
                     placeholder="Masalan: Dasturchi, Dizayner, Marketing mutaxassis"
                     value={newProject.looking_for}
                     onChange={(e) => setNewProject({...newProject, looking_for: e.target.value})}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium modal-input"
                   />
                 </div>
 
@@ -519,7 +523,7 @@ const Home = () => {
                     placeholder="@username (faqat username, @ belgisiz)"
                     value={newProject.telegram}
                     onChange={(e) => setNewProject({...newProject, telegram: e.target.value})}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium modal-input"
                   />
                   <p className="text-xs text-gray-500 mt-1">Faqat username, masalan: alisher_dev</p>
                 </div>
@@ -528,13 +532,13 @@ const Home = () => {
               <div className="flex gap-4 mt-8">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1 px-6 py-4 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-50 transition-all text-lg"
+                  className="flex-1 px-6 py-4 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-50 transition-all text-lg modal-cancel-btn"
                 >
                   Bekor qilish
                 </button>
                 <button
                   onClick={handleCreateProject}
-                  className="flex-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-6 py-4 rounded-xl font-bold hover:shadow-2xl transition-all transform hover:scale-105 text-lg"
+                  className="flex-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-6 py-4 rounded-xl font-bold hover:shadow-2xl transition-all transform hover:scale-105 text-lg modal-submit-btn"
                 >
                   Yaratish
                 </button>
@@ -547,7 +551,7 @@ const Home = () => {
       {/* DETAIL MODAL */}
       {showDetailModal && selectedProject && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl detail-modal">
             <div className="p-8">
               <div className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-3">
@@ -558,7 +562,7 @@ const Home = () => {
                 </div>
                 <button
                   onClick={() => setShowDetailModal(false)}
-                  className="text-gray-400 hover:text-gray-700 text-2xl p-2"
+                  className="text-gray-400 hover:text-gray-700 text-2xl p-2 modal-close-btn"
                 >
                   <X size={28} />
                 </button>
@@ -634,7 +638,7 @@ const Home = () => {
                       href={`https://t.me/${selectedProject.telegram.replace('@', '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all transform hover:scale-105 font-bold flex items-center gap-2"
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all transform hover:scale-105 font-bold flex items-center gap-2 contact-btn"
                     >
                       <MessageCircle size={20} />
                       Telegram orqali bog'lanish
@@ -649,14 +653,14 @@ const Home = () => {
                   onClick={() => {
                     handleVote(selectedProject.id);
                   }}
-                  className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-6 py-4 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+                  className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-6 py-4 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 vote-btn"
                 >
                   <TrendingUp size={20} />
                   Ovoz berish ({selectedProject.votes || 0})
                 </button>
                 <button
                   onClick={() => setShowDetailModal(false)}
-                  className="flex-1 px-6 py-4 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-50 transition-all"
+                  className="flex-1 px-6 py-4 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-50 transition-all modal-cancel-btn"
                 >
                   Yopish
                 </button>

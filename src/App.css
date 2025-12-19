@@ -31,3 +31,307 @@ html {
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
 }
+/* ========== YANGI DIZAYN TAKLIFFLARI ========== */
+
+/* 1. Logo va platforma nomi uchun yangi dizayn */
+.navbar .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-right: auto;
+}
+
+.navbar .logo-shape {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(45deg, #6a11cb 0%, #2575fc 100%);
+    border-radius: 15px;
+    position: relative;
+    transform: rotate(45deg);
+    flex-shrink: 0;
+    box-shadow: 0 5px 15px rgba(106, 17, 203, 0.3);
+}
+
+.navbar .logo-shape::before {
+    content: '';
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: white;
+    border-radius: 8px;
+    top: 10px;
+    left: 10px;
+    transform: rotate(45deg);
+}
+
+.navbar .logo-text {
+    font-size: 28px !important;
+    font-weight: 800;
+    color: #2d3436;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar .logo-text span {
+    color: #6a11cb;
+    margin-left: 5px;
+}
+
+/* 2. Menu bar'ni yaxshilash */
+.navbar {
+    background: white;
+    border-radius: 30px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+    padding: 20px 40px !important;
+    margin-bottom: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    border: 2px solid rgba(106, 17, 203, 0.1);
+}
+
+.menu {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.menu a {
+    text-decoration: none;
+    color: #2d3436;
+    font-weight: 600;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    position: relative;
+    padding: 8px 12px;
+    border-radius: 12px;
+}
+
+.menu a:hover {
+    color: #6a11cb;
+    background: rgba(106, 17, 203, 0.05);
+    transform: translateY(-2px);
+}
+
+.menu a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 3px;
+    background: linear-gradient(45deg, #6a11cb, #2575fc);
+    border-radius: 3px;
+    transition: width 0.3s;
+}
+
+.menu a:hover::after {
+    width: 60%;
+}
+
+.btn-create {
+    background: linear-gradient(45deg, #6a11cb, #2575fc) !important;
+    color: white !important;
+    padding: 12px 25px !important;
+    border-radius: 50px !important;
+    box-shadow: 0 5px 15px rgba(106, 17, 203, 0.3) !important;
+    transition: all 0.3s ease !important;
+    font-weight: 700 !important;
+}
+
+.btn-create:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 8px 20px rgba(106, 17, 203, 0.4) !important;
+}
+
+/* 3. "Sherlik Topamiz!" sarlavhasini kattalashtirish */
+.main-title {
+    font-size: 60px !important;
+    color: #2d3436;
+    line-height: 1.1;
+    margin-bottom: 20px !important;
+    position: relative;
+    display: inline-block;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.main-title::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+    width: 80px;
+    height: 6px;
+    background: linear-gradient(45deg, #6a11cb, #2575fc);
+    border-radius: 3px;
+}
+
+/* 4. Mobil uchun hamburger menyu */
+.menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #6a11cb;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.menu-toggle:hover {
+    background: rgba(106, 17, 203, 0.1);
+}
+
+/* 5. Responsive dizayn - TELEFON UCHUN */
+@media (max-width: 1024px) {
+    .navbar {
+        padding: 15px 25px !important;
+        border-radius: 20px !important;
+        flex-wrap: wrap;
+    }
+    
+    .logo-container {
+        margin-bottom: 0;
+    }
+    
+    .logo-shape {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .logo-text {
+        font-size: 22px !important;
+    }
+    
+    .menu {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 15px;
+        position: relative;
+    }
+    
+    .menu a:not(.btn-create) {
+        display: none;
+    }
+    
+    .menu-toggle {
+        display: block;
+        order: 2;
+    }
+    
+    .btn-create {
+        order: 1;
+        margin-right: 10px;
+    }
+    
+    /* Mobil menyu ochilganda */
+    .menu.active {
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        padding: 20px;
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        margin-top: 10px;
+    }
+    
+    .menu.active a:not(.btn-create) {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 12px;
+        margin: 5px 0;
+        border-bottom: 1px solid rgba(106, 17, 203, 0.1);
+    }
+    
+    .menu.active a:last-child {
+        border-bottom: none;
+    }
+    
+    .menu.active .btn-create {
+        width: 100%;
+        text-align: center;
+        margin: 10px 0 0 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-title {
+        font-size: 36px !important;
+    }
+    
+    .subtitle {
+        font-size: 18px !important;
+    }
+    
+    .hero-section h2 {
+        font-size: 32px !important;
+    }
+    
+    .stats div {
+        font-size: 32px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar {
+        padding: 12px 15px !important;
+    }
+    
+    .logo-shape {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .logo-text {
+        font-size: 20px !important;
+    }
+    
+    .main-title {
+        font-size: 28px !important;
+    }
+    
+    .btn-create {
+        padding: 10px 15px !important;
+        font-size: 14px !important;
+    }
+}
+
+/* 6. Animatsiyalar */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* 7. Hero section yaxshilash */
+.hero-section {
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(106, 17, 203, 0.1), rgba(37, 117, 252, 0.1));
+    z-index: 0;
+}
