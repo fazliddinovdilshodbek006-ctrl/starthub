@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Users, TrendingUp, MessageCircle, Sparkles, Target, Rocket, Github, X } from "lucide-react";
-import { getProjects, createProject, signInWithGitHub, signOut, getCurrentUser } from "../lib/database";
+import { getProjects, createProject, signInWithGitHub, signOut, getCurrentUser } from "./database"; // ⚠️ O'ZGARTIRISH: "../lib/database" -> "./database"
 import "./App.css";
+
 const Home = () => {
   const [projects, setProjects] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -44,12 +45,15 @@ const Home = () => {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
       
-      // 2. Loyihalarni yuklash (avval Supabase'dan)
-      const { data: supabaseProjects, error } = await getProjects({ limit: 50 });
+      // 2. Loyihalarni yuklash (parametrsiz chaqirish) ⚠️ O'ZGARTIRISH
+      const supabaseProjects = await getProjects(); // { limit: 50 } PARAMETRINI O'CHIRING
       
-      if (!error && supabaseProjects && supabaseProjects.length > 0) {
+      if (supabaseProjects && supabaseProjects.length > 0) {
         console.log('✅ Supabase dan', supabaseProjects.length, 'ta loyiha yuklandi');
         setProjects(supabaseProjects);
+        
+        // LocalStorage ga ham saqlaymiz (fallback uchun)
+        localStorage.setItem('sherik_top_projects', JSON.stringify(supabaseProjects));
       } else {
         // Agar Supabase'dan olmasa, localStorage dan olamiz
         console.log('ℹ️ Supabase dan ma\'lumot olinmadi, localStorage tekshirilmoqda');
@@ -84,48 +88,32 @@ const Home = () => {
         category: newProject.category,
         looking_for: newProject.looking_for ? [newProject.looking_for] : [],
         stage: newProject.stage,
-        telegram: newProject.telegram,
+        telegram: newProject.telegram.replace('@', ''), // @ belgisini olib tashlaymiz
         author: newProject.author,
         votes: 0
       };
 
       console.log('📤 Supabase ga loyiha yuborilmoqda...');
       
-      // 1. Avval Supabase ga saqlashga urinamiz
-      const { data: createdProject, error } = await createProject(projectData);
+      // createProject funksiyasini chaqiramiz
+      const result = await createProject(projectData);
       
-      let finalProject;
-      
-      if (error) {
-        console.log('⚠️ Supabase xatosi, localStorage ga saqlaymiz:', error.message);
-        
-        // 2. Agar Supabase ga saqlash xato bo'lsa, localStorage ga saqlaymiz
-        finalProject = {
-          ...projectData,
-          id: Date.now().toString(),
-          created_at: new Date().toISOString()
-        };
-        
-        // LocalStorage ga saqlaymiz
-        const existingProjects = JSON.parse(localStorage.getItem('sherik_top_projects') || '[]');
-        const updatedProjects = [finalProject, ...existingProjects];
-        localStorage.setItem('sherik_top_projects', JSON.stringify(updatedProjects));
-        
-      } else {
-        // 3. Supabase ga muvaffaqiyatli saqlandi
-        console.log('✅ Supabase ga saqlandi:', createdProject);
-        finalProject = createdProject[0] || createdProject;
-        
-        // LocalStorage ni ham yangilaymiz (fallback uchun)
-        const existingProjects = JSON.parse(localStorage.getItem('sherik_top_projects') || '[]');
-        const updatedProjects = [finalProject, ...existingProjects];
-        localStorage.setItem('sherik_top_projects', JSON.stringify(updatedProjects));
+      if (!result) {
+        console.error('❌ Loyiha yaratib bo\'lmadi');
+        alert('Loyiha yaratib bo\'lmadi. LocalStorage ga saqlanadi.');
+        return;
       }
-
-      // 4. State ni yangilaymiz
-      setProjects(prevProjects => [finalProject, ...prevProjects]);
       
-      // 5. Formani tozalaymiz
+      // result allaqachon bitta obyekt (array emas) ⚠️ O'ZGARTIRISH
+      console.log('✅ Yangi loyiha:', result);
+      
+      // State ni yangilash
+      setProjects(prev => [result, ...prev]);
+      
+      // Foydalanuvchiga xabar
+      alert('🎉 Loyihangiz muvaffaqiyatli yaratildi!');
+      
+      // Formani tozalash
       setShowCreateModal(false);
       setNewProject({
         title: '',
@@ -136,8 +124,6 @@ const Home = () => {
         telegram: '',
         author: ''
       });
-      
-      alert('🎉 Loyihangiz muvaffaqiyatli yaratildi!');
       
     } catch (error) {
       console.error('❌ Loyiha yaratishda xatolik:', error);
@@ -530,11 +516,12 @@ const Home = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="@username"
+                    placeholder="@username (faqat username, @ belgisiz)"
                     value={newProject.telegram}
                     onChange={(e) => setNewProject({...newProject, telegram: e.target.value})}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all font-medium"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Faqat username, masalan: alisher_dev</p>
                 </div>
               </div>
 
