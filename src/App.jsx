@@ -8,7 +8,7 @@ import Projects from './pages/Projects';
 import Profile from './pages/Profile';
 import AIAssistant from './pages/AIAssistant';
 import AuthCallback from './pages/AuthCallback';
-import ProfileSystem from './components/auth/ProfileSystem';
+import ProfileSystem from './components/Auth/ProfileSystem';
 import './App.css';
 
 // Auth tekshirish
