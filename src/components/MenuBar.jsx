@@ -124,7 +124,7 @@ const MenuBar = () => {
             <img 
               src={logoImage}
               alt="Sherik Top Logo" 
-              className="w-40 h-12 object-contain transform group-hover:scale-105 transition-transform"
+              className="w-24 h-14 object-contain transform group-hover:scale-105 transition-transform"
             />
             <div className="flex items-baseline">
               <span className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1e3a8a]'}`}>
