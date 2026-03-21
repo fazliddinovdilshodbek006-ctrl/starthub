@@ -15,28 +15,19 @@ const REGIONS = [
   'Sirdaryo', 'Navoiy', 'Xorazm', 'Qoraqalpog\'iston'
 ];
 
-// Kasblar ro'yxati (matching uchun)
+// Kasblar ro'yxati
 const PROFESSIONS = [
-  // IT
   'Frontend dasturchi', 'Backend dasturchi', 'Full-stack dasturchi', 'Mobile dasturchi',
   'Data Analyst', 'Data Scientist', 'Machine Learning muhandis', 'DevOps muhandis',
   'UI/UX dizayner', 'Grafik dizayner', 'Product Manager', 'Project Manager',
   'QA muhandis', 'System Administrator', 'Network muhandis', 'Cybersecurity mutaxassis',
-  
-  // Biznes
   'Marketing mutaxassisi', 'SMM mutaxassisi', 'SEO mutaxassisi', 'Content menejeri',
   'Savdo menejeri', 'Biznes tahlilchi', 'Moliyaviy maslahatchi', 'Buxgalter',
   'HR menejeri', 'Tadbirkor', 'Konsultant', 'Biznes trener',
-  
-  // Ijodiy
   'Video operator', 'Video montaj', 'Fotograf', 'Animatsiya mutaxassisi',
   'Kontent kreator', '3D dizayner', 'Illustrator', 'Copywriter',
-  
-  // Muhandislik
   'Muhandis', 'Arxitektor', 'Qurilish muhandisi', 'Elektr muhandisi',
   'Mexanik muhandis', 'Kimyo muhandisi',
-  
-  // Boshqa
   'O\'qituvchi', 'Tarjimon', 'Yurist', 'Shifokor', 'Hamshira',
   'Psixolog', 'Tadbirchi', 'Restoran menejeri', 'Logistika mutaxassisi'
 ];
@@ -194,28 +185,68 @@ const UserTypeSelection = ({ onSelect, onBack }) => {
   );
 };
 
-// Asoschi Form
+// Asoschi Form - ✅ ERROR LOGGING
 const FounderForm = ({ user, onComplete, onBack }) => {
   const [data, setData] = useState({ full_name: '', age: '', region: '' });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const save = async () => {
-    if (!data.full_name || !data.age || !data.region) return alert('Barcha maydonlarni to\'ldiring');
+    if (!data.full_name || !data.age || !data.region) {
+      setError('Barcha maydonlarni to\'ldiring');
+      return;
+    }
     setLoading(true);
+    setError('');
+    
     try {
-      await supabase.from('profiles').insert({
-        id: user.id, email: user.email, phone: user.user_metadata?.phone,
-        user_type: USER_TYPES.FOUNDER, ...data
+      console.log('🔵 INSERT qilinmoqda:', {
+        id: user.id,
+        email: user.email,
+        phone: user.user_metadata?.phone,
+        user_type: USER_TYPES.FOUNDER,
+        ...data
       });
+      
+      const { data: result, error: insertError } = await supabase.from('profiles').insert({
+        id: user.id,
+        email: user.email,
+        phone: user.user_metadata?.phone,
+        user_type: USER_TYPES.FOUNDER,
+        ...data
+      });
+      
+      if (insertError) {
+        console.error('❌ INSERT XATOSI:', insertError);
+        console.error('❌ Xato kodi:', insertError.code);
+        console.error('❌ Xato xabari:', insertError.message);
+        console.error('❌ Xato details:', insertError.details);
+        setError(`INSERT XATOSI: ${insertError.message}`);
+        return;
+      }
+      
+      console.log('✅ INSERT MUVAFFAQIYATLI!', result);
       onComplete();
-    } catch (err) { alert(err.message); }
-    setLoading(false);
+    } catch (err) {
+      console.error('❌ CATCH XATOSI:', err);
+      setError(`Catch xatosi: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-lg w-full p-8">
         <h2 className="text-2xl font-bold mb-6">Asoschi</h2>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-red-700 text-sm font-medium">{error}</p>
+            <p className="text-red-600 text-xs mt-1">Console (F12) da batafsil ma'lumot bor</p>
+          </div>
+        )}
+        
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Ism Familiya *</label>
@@ -242,11 +273,12 @@ const FounderForm = ({ user, onComplete, onBack }) => {
   );
 };
 
-// Mutaxassis Form
+// Mutaxassis Form - ✅ ERROR LOGGING
 const SpecialistForm = ({ user, onComplete, onBack }) => {
   const [data, setData] = useState({ full_name: '', age: '', region: '', profession: '', experience: '' });
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleProfessionChange = (value) => {
     setData({...data, profession: value});
@@ -259,22 +291,52 @@ const SpecialistForm = ({ user, onComplete, onBack }) => {
   };
 
   const save = async () => {
-    if (!data.full_name || !data.age || !data.region || !data.profession || !data.experience) return alert('Barcha maydonlarni to\'ldiring');
+    if (!data.full_name || !data.age || !data.region || !data.profession || !data.experience) {
+      setError('Barcha maydonlarni to\'ldiring');
+      return;
+    }
     setLoading(true);
+    setError('');
+    
     try {
-      await supabase.from('profiles').insert({
-        id: user.id, email: user.email, phone: user.user_metadata?.phone,
-        user_type: USER_TYPES.SPECIALIST, ...data
+      console.log('🔵 INSERT qilinmoqda:', { user_id: user.id, ...data });
+      
+      const { data: result, error: insertError } = await supabase.from('profiles').insert({
+        id: user.id,
+        email: user.email,
+        phone: user.user_metadata?.phone,
+        user_type: USER_TYPES.SPECIALIST,
+        ...data
       });
+      
+      if (insertError) {
+        console.error('❌ INSERT XATOSI:', insertError);
+        setError(`INSERT XATOSI: ${insertError.message}`);
+        return;
+      }
+      
+      console.log('✅ INSERT MUVAFFAQIYATLI!', result);
       onComplete();
-    } catch (err) { alert(err.message); }
-    setLoading(false);
+    } catch (err) {
+      console.error('❌ CATCH XATOSI:', err);
+      setError(`Catch xatosi: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl max-w-lg w-full p-8 my-8">
         <h2 className="text-2xl font-bold mb-6">Mutaxassis</h2>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-red-700 text-sm font-medium">{error}</p>
+            <p className="text-red-600 text-xs mt-1">Console (F12) da batafsil ma'lumot bor</p>
+          </div>
+        )}
+        
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Ism Familiya *</label>
@@ -335,32 +397,63 @@ const SpecialistForm = ({ user, onComplete, onBack }) => {
   );
 };
 
-// Investor Form
+// Investor Form - ✅ ERROR LOGGING
 const InvestorForm = ({ user, onComplete, onBack }) => {
   const [data, setData] = useState({ full_name: '', age: '', region: '', interests: [] });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const toggleInterest = (cat) => {
     setData({...data, interests: data.interests.includes(cat) ? data.interests.filter(i => i !== cat) : [...data.interests, cat]});
   };
 
   const save = async () => {
-    if (!data.full_name || !data.age || !data.region || data.interests.length === 0) return alert('Barcha maydonlarni to\'ldiring');
+    if (!data.full_name || !data.age || !data.region || data.interests.length === 0) {
+      setError('Barcha maydonlarni to\'ldiring');
+      return;
+    }
     setLoading(true);
+    setError('');
+    
     try {
-      await supabase.from('profiles').insert({
-        id: user.id, email: user.email, phone: user.user_metadata?.phone,
-        user_type: USER_TYPES.INVESTOR, ...data
+      console.log('🔵 INSERT qilinmoqda:', { user_id: user.id, ...data });
+      
+      const { data: result, error: insertError } = await supabase.from('profiles').insert({
+        id: user.id,
+        email: user.email,
+        phone: user.user_metadata?.phone,
+        user_type: USER_TYPES.INVESTOR,
+        ...data
       });
+      
+      if (insertError) {
+        console.error('❌ INSERT XATOSI:', insertError);
+        setError(`INSERT XATOSI: ${insertError.message}`);
+        return;
+      }
+      
+      console.log('✅ INSERT MUVAFFAQIYATLI!', result);
       onComplete();
-    } catch (err) { alert(err.message); }
-    setLoading(false);
+    } catch (err) {
+      console.error('❌ CATCH XATOSI:', err);
+      setError(`Catch xatosi: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl max-w-lg w-full p-8 my-8">
         <h2 className="text-2xl font-bold mb-6">Investor</h2>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-red-700 text-sm font-medium">{error}</p>
+            <p className="text-red-600 text-xs mt-1">Console (F12) da batafsil ma'lumot bor</p>
+          </div>
+        )}
+        
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Ism Familiya *</label>
