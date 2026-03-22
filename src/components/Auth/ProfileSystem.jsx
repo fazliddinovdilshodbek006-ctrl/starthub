@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { Mail, Lock, User, Briefcase, TrendingUp, Eye, EyeOff, AlertCircle, CheckCircle, X, Phone, MapPin, Calendar } from 'lucide-react';
+import { Mail, Lock, User, Briefcase, TrendingUp, Eye, EyeOff, AlertCircle, CheckCircle, X, Phone, MapPin, Calendar, Send } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const USER_TYPES = {
@@ -8,14 +8,12 @@ const USER_TYPES = {
   INVESTOR: 'investor'
 };
 
-// O'zbekiston hududlari
 const REGIONS = [
   'Toshkent shahri', 'Toshkent viloyati', 'Samarqand', 'Buxoro', 'Farg\'ona',
   'Andijon', 'Namangan', 'Qashqadaryo', 'Surxondaryo', 'Jizzax',
   'Sirdaryo', 'Navoiy', 'Xorazm', 'Qoraqalpog\'iston'
 ];
 
-// Kasblar ro'yxati
 const PROFESSIONS = [
   'Frontend dasturchi', 'Backend dasturchi', 'Full-stack dasturchi', 'Mobile dasturchi',
   'Data Analyst', 'Data Scientist', 'Machine Learning muhandis', 'DevOps muhandis',
@@ -32,7 +30,6 @@ const PROFESSIONS = [
   'Psixolog', 'Tadbirchi', 'Restoran menejeri', 'Logistika mutaxassisi'
 ];
 
-// Loyiha kategoriyalari
 const PROJECT_CATEGORIES = [
   'Texnologiya', 'Ta\'lim', 'Sog\'liq', 'Moliya', 'Ijtimoiy',
   'E-commerce', 'Turizm', 'Qishloq xo\'jaligi', 'Transport', 'Boshqa'
@@ -185,76 +182,70 @@ const UserTypeSelection = ({ onSelect, onBack }) => {
   );
 };
 
-// Asoschi Form - ✅ ERROR LOGGING
+// ✅ ASOSCHI FORM - TELEGRAM BILAN
 const FounderForm = ({ user, onComplete, onBack }) => {
-  const [data, setData] = useState({ full_name: '', age: '', region: '' });
+  const [data, setData] = useState({ full_name: '', age: '', region: '', telegram: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const save = async () => {
-    if (!data.full_name || !data.age || !data.region) {
+    if (!data.full_name || !data.age || !data.region || !data.telegram) {
       setError('Barcha maydonlarni to\'ldiring');
       return;
     }
+    
+    const telegramUsername = data.telegram.startsWith('@') ? data.telegram : '@' + data.telegram;
+    
     setLoading(true);
     setError('');
     
     try {
-      console.log('🔵 INSERT qilinmoqda:', {
-        id: user.id,
-        email: user.email,
-        phone: user.user_metadata?.phone,
-        user_type: USER_TYPES.FOUNDER,
-        ...data
-      });
-      
       const { data: result, error: insertError } = await supabase.from('profiles').insert({
         id: user.id,
         email: user.email,
         phone: user.user_metadata?.phone,
         user_type: USER_TYPES.FOUNDER,
-        ...data
+        full_name: data.full_name,
+        age: data.age,
+        region: data.region,
+        telegram: telegramUsername
       });
       
       if (insertError) {
         console.error('❌ INSERT XATOSI:', insertError);
-        console.error('❌ Xato kodi:', insertError.code);
-        console.error('❌ Xato xabari:', insertError.message);
-        console.error('❌ Xato details:', insertError.details);
-        setError(`INSERT XATOSI: ${insertError.message}`);
+        setError(`Xato: ${insertError.message}`);
         return;
       }
       
-      console.log('✅ INSERT MUVAFFAQIYATLI!', result);
+      console.log('✅ Profil yaratildi!');
       onComplete();
     } catch (err) {
-      console.error('❌ CATCH XATOSI:', err);
-      setError(`Catch xatosi: ${err.message}`);
+      console.error('❌ Xato:', err);
+      setError(`Xato: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-8">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-8 my-8">
         <h2 className="text-2xl font-bold mb-6">Asoschi</h2>
         
         {error && (
           <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
             <p className="text-red-700 text-sm font-medium">{error}</p>
-            <p className="text-red-600 text-xs mt-1">Console (F12) da batafsil ma'lumot bor</p>
           </div>
         )}
         
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Ism Familiya *</label>
-            <input type="text" value={data.full_name} onChange={e => setData({...data, full_name: e.target.value})} className="w-full px-4 py-3 border rounded-lg" />
+            <input type="text" value={data.full_name} onChange={e => setData({...data, full_name: e.target.value})} placeholder="Ism Familiya" className="w-full px-4 py-3 border rounded-lg" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Yosh *</label>
-            <input type="number" value={data.age} onChange={e => setData({...data, age: e.target.value})} className="w-full px-4 py-3 border rounded-lg" />
+            <input type="number" value={data.age} onChange={e => setData({...data, age: e.target.value})} placeholder="25" className="w-full px-4 py-3 border rounded-lg" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Hudud *</label>
@@ -263,19 +254,36 @@ const FounderForm = ({ user, onComplete, onBack }) => {
               {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Telegram *</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">@</span>
+              <input 
+                type="text" 
+                value={data.telegram} 
+                onChange={e => setData({...data, telegram: e.target.value.replace('@', '')})} 
+                placeholder="username"
+                className="w-full pl-8 pr-4 py-3 border rounded-lg" 
+              />
+              <Send size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Telegram foydalanuvchi nomi (@ siz)</p>
+          </div>
         </div>
         <div className="flex gap-3 mt-6">
-          <button onClick={onBack} className="flex-1 py-3 border rounded-lg">Orqaga</button>
-          <button onClick={save} disabled={loading} className="flex-1 bg-blue-600 text-white py-3 rounded-lg">{loading ? 'Saqlanmoqda...' : 'Saqlash'}</button>
+          <button onClick={onBack} className="flex-1 py-3 border rounded-lg hover:bg-gray-50 transition">Orqaga</button>
+          <button onClick={save} disabled={loading} className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
+            {loading ? 'Saqlanmoqda...' : 'Saqlash'}
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// Mutaxassis Form - ✅ ERROR LOGGING
+// ✅ MUTAXASSIS FORM - TELEGRAM BILAN
 const SpecialistForm = ({ user, onComplete, onBack }) => {
-  const [data, setData] = useState({ full_name: '', age: '', region: '', profession: '', experience: '' });
+  const [data, setData] = useState({ full_name: '', age: '', region: '', profession: '', experience: '', telegram: '' });
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -291,35 +299,41 @@ const SpecialistForm = ({ user, onComplete, onBack }) => {
   };
 
   const save = async () => {
-    if (!data.full_name || !data.age || !data.region || !data.profession || !data.experience) {
+    if (!data.full_name || !data.age || !data.region || !data.profession || !data.experience || !data.telegram) {
       setError('Barcha maydonlarni to\'ldiring');
       return;
     }
+    
+    const telegramUsername = data.telegram.startsWith('@') ? data.telegram : '@' + data.telegram;
+    
     setLoading(true);
     setError('');
     
     try {
-      console.log('🔵 INSERT qilinmoqda:', { user_id: user.id, ...data });
-      
       const { data: result, error: insertError } = await supabase.from('profiles').insert({
         id: user.id,
         email: user.email,
         phone: user.user_metadata?.phone,
         user_type: USER_TYPES.SPECIALIST,
-        ...data
+        full_name: data.full_name,
+        age: data.age,
+        region: data.region,
+        profession: data.profession,
+        experience: data.experience,
+        telegram: telegramUsername
       });
       
       if (insertError) {
         console.error('❌ INSERT XATOSI:', insertError);
-        setError(`INSERT XATOSI: ${insertError.message}`);
+        setError(`Xato: ${insertError.message}`);
         return;
       }
       
-      console.log('✅ INSERT MUVAFFAQIYATLI!', result);
+      console.log('✅ Profil yaratildi!');
       onComplete();
     } catch (err) {
-      console.error('❌ CATCH XATOSI:', err);
-      setError(`Catch xatosi: ${err.message}`);
+      console.error('❌ Xato:', err);
+      setError(`Xato: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -333,18 +347,17 @@ const SpecialistForm = ({ user, onComplete, onBack }) => {
         {error && (
           <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
             <p className="text-red-700 text-sm font-medium">{error}</p>
-            <p className="text-red-600 text-xs mt-1">Console (F12) da batafsil ma'lumot bor</p>
           </div>
         )}
         
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Ism Familiya *</label>
-            <input type="text" value={data.full_name} onChange={e => setData({...data, full_name: e.target.value})} className="w-full px-4 py-3 border rounded-lg" />
+            <input type="text" value={data.full_name} onChange={e => setData({...data, full_name: e.target.value})} placeholder="Ism Familiya" className="w-full px-4 py-3 border rounded-lg" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Yosh *</label>
-            <input type="number" value={data.age} onChange={e => setData({...data, age: e.target.value})} className="w-full px-4 py-3 border rounded-lg" />
+            <input type="number" value={data.age} onChange={e => setData({...data, age: e.target.value})} placeholder="25" className="w-full px-4 py-3 border rounded-lg" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Hudud *</label>
@@ -359,7 +372,7 @@ const SpecialistForm = ({ user, onComplete, onBack }) => {
               type="text" 
               value={data.profession} 
               onChange={e => handleProfessionChange(e.target.value)} 
-              placeholder="Yozing, masalan: Frontend..." 
+              placeholder="Masalan: Frontend dasturchi" 
               className="w-full px-4 py-3 border rounded-lg" 
             />
             {suggestions.length > 0 && (
@@ -387,19 +400,36 @@ const SpecialistForm = ({ user, onComplete, onBack }) => {
               <option>5+ yil</option>
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Telegram *</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">@</span>
+              <input 
+                type="text" 
+                value={data.telegram} 
+                onChange={e => setData({...data, telegram: e.target.value.replace('@', '')})} 
+                placeholder="username"
+                className="w-full pl-8 pr-4 py-3 border rounded-lg" 
+              />
+              <Send size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Telegram foydalanuvchi nomi (@ siz)</p>
+          </div>
         </div>
         <div className="flex gap-3 mt-6">
-          <button onClick={onBack} className="flex-1 py-3 border rounded-lg">Orqaga</button>
-          <button onClick={save} disabled={loading} className="flex-1 bg-green-600 text-white py-3 rounded-lg">{loading ? 'Saqlanmoqda...' : 'Saqlash'}</button>
+          <button onClick={onBack} className="flex-1 py-3 border rounded-lg hover:bg-gray-50 transition">Orqaga</button>
+          <button onClick={save} disabled={loading} className="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition disabled:opacity-50">
+            {loading ? 'Saqlanmoqda...' : 'Saqlash'}
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// Investor Form - ✅ ERROR LOGGING
+// ✅ INVESTOR FORM - TELEGRAM BILAN
 const InvestorForm = ({ user, onComplete, onBack }) => {
-  const [data, setData] = useState({ full_name: '', age: '', region: '', interests: [] });
+  const [data, setData] = useState({ full_name: '', age: '', region: '', interests: [], telegram: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -408,35 +438,40 @@ const InvestorForm = ({ user, onComplete, onBack }) => {
   };
 
   const save = async () => {
-    if (!data.full_name || !data.age || !data.region || data.interests.length === 0) {
+    if (!data.full_name || !data.age || !data.region || data.interests.length === 0 || !data.telegram) {
       setError('Barcha maydonlarni to\'ldiring');
       return;
     }
+    
+    const telegramUsername = data.telegram.startsWith('@') ? data.telegram : '@' + data.telegram;
+    
     setLoading(true);
     setError('');
     
     try {
-      console.log('🔵 INSERT qilinmoqda:', { user_id: user.id, ...data });
-      
       const { data: result, error: insertError } = await supabase.from('profiles').insert({
         id: user.id,
         email: user.email,
         phone: user.user_metadata?.phone,
         user_type: USER_TYPES.INVESTOR,
-        ...data
+        full_name: data.full_name,
+        age: data.age,
+        region: data.region,
+        interests: data.interests,
+        telegram: telegramUsername
       });
       
       if (insertError) {
         console.error('❌ INSERT XATOSI:', insertError);
-        setError(`INSERT XATOSI: ${insertError.message}`);
+        setError(`Xato: ${insertError.message}`);
         return;
       }
       
-      console.log('✅ INSERT MUVAFFAQIYATLI!', result);
+      console.log('✅ Profil yaratildi!');
       onComplete();
     } catch (err) {
-      console.error('❌ CATCH XATOSI:', err);
-      setError(`Catch xatosi: ${err.message}`);
+      console.error('❌ Xato:', err);
+      setError(`Xato: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -450,18 +485,17 @@ const InvestorForm = ({ user, onComplete, onBack }) => {
         {error && (
           <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
             <p className="text-red-700 text-sm font-medium">{error}</p>
-            <p className="text-red-600 text-xs mt-1">Console (F12) da batafsil ma'lumot bor</p>
           </div>
         )}
         
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Ism Familiya *</label>
-            <input type="text" value={data.full_name} onChange={e => setData({...data, full_name: e.target.value})} className="w-full px-4 py-3 border rounded-lg" />
+            <input type="text" value={data.full_name} onChange={e => setData({...data, full_name: e.target.value})} placeholder="Ism Familiya" className="w-full px-4 py-3 border rounded-lg" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Yosh *</label>
-            <input type="number" value={data.age} onChange={e => setData({...data, age: e.target.value})} className="w-full px-4 py-3 border rounded-lg" />
+            <input type="number" value={data.age} onChange={e => setData({...data, age: e.target.value})} placeholder="25" className="w-full px-4 py-3 border rounded-lg" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Hudud *</label>
@@ -471,7 +505,7 @@ const InvestorForm = ({ user, onComplete, onBack }) => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Qiziqtirgan loyihalar *</label>
+            <label className="block text-sm font-medium mb-2">Qiziqtirgan loyihalar * (Kamida 1 ta)</label>
             <div className="flex flex-wrap gap-2">
               {PROJECT_CATEGORIES.map(cat => (
                 <button
@@ -484,10 +518,27 @@ const InvestorForm = ({ user, onComplete, onBack }) => {
               ))}
             </div>
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Telegram *</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">@</span>
+              <input 
+                type="text" 
+                value={data.telegram} 
+                onChange={e => setData({...data, telegram: e.target.value.replace('@', '')})} 
+                placeholder="username"
+                className="w-full pl-8 pr-4 py-3 border rounded-lg" 
+              />
+              <Send size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Telegram foydalanuvchi nomi (@ siz)</p>
+          </div>
         </div>
         <div className="flex gap-3 mt-6">
-          <button onClick={onBack} className="flex-1 py-3 border rounded-lg">Orqaga</button>
-          <button onClick={save} disabled={loading} className="flex-1 bg-orange-600 text-white py-3 rounded-lg">{loading ? 'Saqlanmoqda...' : 'Saqlash'}</button>
+          <button onClick={onBack} className="flex-1 py-3 border rounded-lg hover:bg-gray-50 transition">Orqaga</button>
+          <button onClick={save} disabled={loading} className="flex-1 bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 transition disabled:opacity-50">
+            {loading ? 'Saqlanmoqda...' : 'Saqlash'}
+          </button>
         </div>
       </div>
     </div>
@@ -513,7 +564,7 @@ const App = () => {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>;
-  if (done) return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-8"><div className="bg-white rounded-3xl p-8 text-center max-w-lg"><CheckCircle size={64} className="mx-auto mb-4 text-green-600" /><h1 className="text-3xl font-bold mb-2">Tayyor!</h1><p className="text-gray-600 mb-6">Profilingiz yaratildi</p><button onClick={() => window.location.href = '/'} className="px-8 py-3 bg-blue-600 text-white rounded-lg">Bosh sahifa</button></div></div>;
+  if (done) return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-8"><div className="bg-white rounded-3xl p-8 text-center max-w-lg"><CheckCircle size={64} className="mx-auto mb-4 text-green-600" /><h1 className="text-3xl font-bold mb-2">Tayyor!</h1><p className="text-gray-600 mb-6">Profilingiz yaratildi</p><button onClick={() => window.location.href = '/'} className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Bosh sahifa</button></div></div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
